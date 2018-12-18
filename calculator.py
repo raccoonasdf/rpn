@@ -13,14 +13,14 @@ class OperatorError(Exception):
 class Calculator:
     def __init__(self, base=10):
         self.operators = {
-            '+':     self._guard(2, lambda x, y: x+y, TypeError, 'type mismatch'),
-            '-':     (2, lambda x, y: x-y),
-            '*':     (2, lambda x, y: x*y),
-            '/':     (2, Fraction),
-            '%':     (2, lambda x, y: x%y),
-            '^':     (2, lambda x, y: x**y),
-            '<':     (2, lambda x, y: min(x, y)),
-            '>':     (2, lambda x, y: max(x, y)),
+            '+':     self._guard(2, lambda x, y: x+y),
+            '-':     self._guard(2, lambda x, y: x-y),
+            '*':     self._guard(2, lambda x, y: x*y),
+            '/':     self._guard(2, Fraction),
+            '%':     self._guard(2, lambda x, y: x%y),
+            '^':     self._guard(2, lambda x, y: x**y),
+            '<':     self._guard(2, lambda x, y: min(x, y)),
+            '>':     self._guard(2, lambda x, y: max(x, y)),
             '<-':    (2, lambda x, y: x),
             '->':    (2, lambda x, y: y),
             'base':  (1, self._setbase),
@@ -44,7 +44,7 @@ class Calculator:
         self.frac = True
 
     @staticmethod
-    def _guard(argc, f, exception, msg):
+    def _guard(argc, f, exception=TypeError, msg='type mismatch'):
         def guarded(*args):
             try:
                 return f(*args)
