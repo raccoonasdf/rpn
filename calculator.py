@@ -5,8 +5,6 @@ import itertools
 import re
 import string
 
-type_strs = {object: 'any', Fraction: 'num', str: 'sym', list: 'stack'}
-
 # these exceptions to be used for pretty messages on errors that have been
 # explicitly accounted for
 class OperatorError(Exception):
@@ -167,6 +165,7 @@ class Calculator:
         return self.Ftoa(value) if isinstance(value, Fraction) else ':'+value
 
     def _assert_type(self, value, type):
+        type_strs = {object: 'any', Fraction: 'num', str: 'sym', list: 'stack'}
         if not isinstance(value, type):
             raise OperatorError(f'{self.display_token(value)} is not of type {type_strs[type]}')
 
