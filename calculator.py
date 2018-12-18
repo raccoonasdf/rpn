@@ -217,7 +217,7 @@ class Calculator:
                                 args, self.stack = self.stack[-argc:], self.stack[:-argc]
                                 for i, arg in enumerate(args):
                                     self._assert_type(arg, types[i])
-                                for i, arg in self.stack:
+                                for i, arg in enumerate(self.stack):
                                     self._assert_type(arg, types[-1])
                                 repeated_args = (itertools.repeat(arg) for arg in args)
                                 value = map(f, *repeated_args, self.stack)
