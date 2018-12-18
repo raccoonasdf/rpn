@@ -97,7 +97,7 @@ you can operate on data in the stack using operator functions, which will take s
 | *           | num, num      | multiplication                         |
 | /           | num, num      | division                               |
 | %           | num, num      | modulo                                 |
-| ^           | num, num      | exponentation                          |
+| ^ (**)      | num, num      | exponentation                          |
 | <           | num, num      | minimum                                |
 | >           | num, num      | maximum                                |
 | <-          | num, num      | first argument                         |

@@ -19,6 +19,7 @@ class Calculator:
             '/':       self._guard(2, Fraction),
             '%':       self._guard(2, lambda x, y: x%y),
             '^':       self._guard(2, lambda x, y: x**y),
+            '**':      '^',
             '<':       self._guard(2, lambda x, y: min(x, y)),
             '>':       self._guard(2, lambda x, y: max(x, y)),
             '<-':      (2, lambda x, y: x),
