@@ -196,7 +196,7 @@ class Calculator:
                 try:
                     if argc == 0: # no args
                         value = f()
-                    if argc == 1 and types[0] is list: # entire stack
+                    elif argc == 1 and types[0] is list: # entire stack
                         value = f(*self.stack)
                         self.stack = []
                     elif argc > 0 and len(self.stack) >= argc:
