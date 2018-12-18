@@ -106,9 +106,9 @@ you can operate on data in the stack using operator functions, which will take s
 | swap (s)    | any, any      | swap order                             |
 | eval (e)    | sym           | evaluate symbol as operator            |
 | clear (c)   | stack         | clear stack                            |
-| base (b)    | int           | set base                               |
+| base (b)    | any           | set base                               |
 | frac (f)    |               | toggle float/fraction representation   |
 | chr         | num           | convert number to symbol               |
 | ord         | sym           | convert symbol to number               |
-| range (r)   | int, int      | generate number range                  |
-| range' (r') | int, int, int | generate number range (with step size) |
+| range (r)   | num, num      | generate number range                  |
+| range' (r') | num, num, num | generate number range (with step size) |

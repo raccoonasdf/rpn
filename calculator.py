@@ -29,12 +29,12 @@ class Calculator:
             'swap':    ((object, object), lambda x, y: (y, x)),
             'eval':    ((str,), self.parse),
             'clear':   ((list,), lambda *x: None),
-            'base':    ((int,), self._setbase),
+            'base':    ((object,), self._setbase),
             'frac':    ((), self._togglefrac), #TODO: use := in 3.8+
-            'chr':     ((int,), lambda x: chr(x)),
+            'chr':     ((Fraction,), lambda x: chr(round(x))),
             'ord':     ((str,), lambda x: (ord(char) for char in x)),
-            'range':   ((int, int), lambda x, y: range(x, y+1)),
-            'range\'': ((int, int, int), lambda x, y, z: range(x, y+1, z)),
+            'range':   ((Fraction, Fraction), lambda x, y: range(round(x), round(y)+1)),
+            'range\'': ((Fraction, Fraction, Fraction), lambda x, y, z: range(round(x), round(y)+1, round(z))),
             'cp':      'copy',
             's':       'swap',
             'e':       'eval',
@@ -62,7 +62,7 @@ class Calculator:
                 raise OperatorError(f'radix too small')
             elif base > 36:
                 raise OperatorError(f'radix too large')
-            self.base = base
+            self.base = round(base)
 
     def _togglefrac(self):
         self.frac = not self.frac
