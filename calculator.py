@@ -5,6 +5,8 @@ import itertools
 import re
 import string
 
+type_strs = {object: 'any', Fraction: 'num', str: 'sym', list: 'stack'}
+
 # these exceptions to be used for pretty messages on errors that have been
 # explicitly accounted for
 class OperatorError(Exception):
@@ -13,48 +15,39 @@ class OperatorError(Exception):
 class Calculator:
     def __init__(self, base=10):
         self.operators = {
-            '+':       self._guard(2, lambda x, y: x+y),
-            '-':       self._guard(2, lambda x, y: x-y),
-            '*':       self._guard(2, lambda x, y: x*y),
-            '/':       self._guard(2, Fraction),
-            '%':       self._guard(2, lambda x, y: x%y),
-            '^':       self._guard(2, lambda x, y: x**y),
+            '+':       ((Fraction, Fraction), lambda x, y: x+y),
+            '-':       ((Fraction, Fraction), lambda x, y: x-y),
+            '*':       ((Fraction, Fraction), lambda x, y: x*y),
+            '/':       ((Fraction, Fraction), Fraction),
+            '%':       ((Fraction, Fraction), lambda x, y: x%y),
+            '^':       ((Fraction, Fraction), lambda x, y: x**y),
             '**':      '^',
-            '<':       self._guard(2, lambda x, y: min(x, y)),
-            '>':       self._guard(2, lambda x, y: max(x, y)),
-            '<-':      (2, lambda x, y: x),
-            '->':      (2, lambda x, y: y),
-            'base':    (1, self._setbase),
+            '<':       ((Fraction, Fraction), lambda x, y: min(x, y)),
+            '>':       ((Fraction, Fraction), lambda x, y: max(x, y)),
+            '<-':      ((object, object), lambda x, y: x),
+            '->':      ((object, object), lambda x, y: y),
+            'base':    ((int,), self._setbase),
             'b':       'base',
-            'frac':    (0, self._togglefrac), #TODO: use := in 3.8+ for these
+            'frac':    ((), self._togglefrac), #TODO: use := in 3.8+ for these
             'f':       'frac',
-            'clear':   (-1, lambda *x: None),
+            'clear':   ((list,), lambda *x: None),
             'c':       'clear',
-            'copy':    (1, lambda x: (x, x)),
+            'copy':    ((object,), lambda x: (x, x)),
             'cp':      'copy',
-            'eval':    (1, self.parse),
+            'eval':    ((str,), self.parse),
             'e':       'eval',
-            'swap':    (2, lambda x, y: (y, x)),
+            'swap':    ((object, object), lambda x, y: (y, x)),
             's':       'swap',
-            'chr':     self._guard(1, lambda x: chr(round(x))),
-            'ord':     self._guard(1, lambda x: (ord(char) for char in x)),
-            'range':   (2, lambda x, y: range(round(x), round(y)+1)),
+            'chr':     ((int,), lambda x: chr(x)),
+            'ord':     ((str,), lambda x: (ord(char) for char in x)),
+            'range':   ((int, int), lambda x, y: range(x, y+1)),
             'r':       'range',
-            'range\'': (3, lambda x, y, z: range(round(x), round(y)+1, round(z))),
+            'range\'': ((int, int, int), lambda x, y, z: range(x, y+1, z)),
             'r\'':     'range\''
         }
         self.stack = []
         self.base = base
         self.frac = True
-
-    @staticmethod
-    def _guard(argc, f, exception=TypeError, msg='type mismatch'):
-        def guarded(*args):
-            try:
-                return f(*args)
-            except exception:
-                raise OperatorError(msg)
-        return (argc, guarded)
         
     def _setbase(self, base):
         if isinstance(base, str):
@@ -170,6 +163,13 @@ class Calculator:
 
         return round(self.atoF(s, base))
 
+    def display_token(self, value):
+        return self.Ftoa(value) if isinstance(value, Fraction) else ':'+value
+
+    def _assert_type(self, value, type):
+        if not isinstance(value, type):
+            raise OperatorError(f'{self.display_token(value)} is not of type {type_strs[type]}')
+
     def parse(self, token):
         try: # is rational
             value = self.atoF(token)
@@ -191,30 +191,42 @@ class Calculator:
                 except KeyError:
                     raise OperatorError(f'operator not found')
 
-                (argc, f) = operator
+                (types, f) = operator
+                argc = len(types)
                 try:
-                    if argc == -1: # entire stack
+                    if argc == 0: # no args
+                        value = f()
+                    if argc == 1 and types[0] is list: # entire stack
                         value = f(*self.stack)
                         self.stack = []
-                    elif argc == 0: # no args
-                        value = f()
                     elif argc > 0 and len(self.stack) >= argc:
                         if suffix == '$': # reduce
-                            if argc != 2:
-                                raise OperatorError(f'reduce needs 2 args')
+                            if argc != 2 or argc == 2 and types[0] != types[1]:
+                                raise OperatorError(f'need 2 args of same type for reduce')
+
+                            for value in self.stack:
+                                self._assert_type(value, types[0])
                             value = functools.reduce(f, self.stack)
                             self.stack = []
                         elif suffix == '.': # map
                             if argc == 1:
+                                for value in self.stack:
+                                    self._assert_type(value, types[0])
                                 value = map(f, self.stack)
                             else:
                                 argc -= 1
                                 args, self.stack = self.stack[-argc:], self.stack[:-argc]
+                                for i, arg in enumerate(args):
+                                    self._assert_type(arg, types[i])
+                                for i, arg in self.stack:
+                                    self._assert_type(arg, types[-1])
                                 repeated_args = (itertools.repeat(arg) for arg in args)
                                 value = map(f, *repeated_args, self.stack)
                             self.stack = []
                         else: # normal
                             args, self.stack = self.stack[-argc:], self.stack[:-argc]
+                            for i, arg in enumerate(args):
+                                self._assert_type(arg, types[i])
                             value = f(*args)
                     else: # fail
                         raise OperatorError(f'expected {argc} arguments')

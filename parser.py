@@ -27,7 +27,7 @@ def parse_print(line, simple=False):
                 print(f'!{e} (in "{token}")')
                 calc.stack = snap
                 break
-        stack = ' '.join(calc.Ftoa(value) if not isinstance(value, str) else ':'+value for value in calc.stack)
+        stack = ' '.join(calc.display_token(value) for value in calc.stack)
         if simple:
             print(f'{stack}')
         else:
