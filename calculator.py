@@ -170,6 +170,12 @@ class Calculator:
         if not isinstance(value, type):
             raise OperatorError(f'{self.display_token(value)} is not of type {type_strs[type]}')
 
+    @staticmethod
+    def _cast(value):
+        if isinstance(value, int):
+            return Fraction(value)
+        return value
+
     def parse(self, token):
         try: # is rational
             value = self.atoF(token)
@@ -234,6 +240,7 @@ class Calculator:
                     raise OperatorError(f'division by zero')
         if value is not None:
             if not isinstance(value, str) and isinstance(value, collections.Iterable):
-                self.stack += value
+                for item in value:
+                    self.stack.append(self._cast(item))
             else:
-                self.stack.append(value)
+                self.stack.append(self._cast(value))
