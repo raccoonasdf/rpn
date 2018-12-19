@@ -31,10 +31,10 @@ class Calculator:
             'clear':   ((list,), lambda *x: None),
             'base':    ((object,), self._setbase),
             'frac':    ((), self._togglefrac), #TODO: use := in 3.8+
-            'chr':     ((Fraction,), lambda x: chr(round(x))),
+            'chr':     ((Fraction,), lambda x: chr(abs(round(x)))),
             'ord':     ((str,), lambda x: (ord(char) for char in x)),
-            'range':   ((Fraction, Fraction), lambda x, y: range(round(x), round(y)+1)),
-            'range\'': ((Fraction, Fraction, Fraction), lambda x, y, z: range(round(x), round(y)+1, round(z))),
+            'range':   ((Fraction, Fraction), lambda x, y: self._range(x, y)),
+            'range\'': ((Fraction, Fraction, Fraction), lambda x, y, z: self._range(x, y, z)),
             'cp':      'copy',
             's':       'swap',
             'e':       'eval',
@@ -47,6 +47,17 @@ class Calculator:
         self.stack = []
         self.base = base
         self.frac = True
+
+    @staticmethod
+    def _range(start, end, step=Fraction(1)):
+        if step == 0:
+            raise OperatorError('step cannot be 0')
+        elif step < 0 and start < end or step > 0 and start > end:
+            raise OperatorError('range will never end')
+        x = start
+        while x <= end if start <= end else x >= end:
+            yield x
+            x += step
         
     def _setbase(self, base):
         if isinstance(base, str):
@@ -172,8 +183,10 @@ class Calculator:
 
     @staticmethod
     def _cast(value):
-        if isinstance(value, int):
+        if isinstance(value, int) or isinstance(value, float):
             return Fraction(value)
+        elif isinstance(value, complex):
+            raise OperatorError('nonreal result')
         return value
 
     def parse(self, token):
@@ -237,7 +250,7 @@ class Calculator:
                     else: # fail
                         raise OperatorError(f'expected {argc} arguments')
                 except ZeroDivisionError:
-                    raise OperatorError(f'division by zero')
+                    raise OperatorError('division by zero')
         if value is not None:
             if not isinstance(value, str) and isinstance(value, collections.Iterable):
                 for item in value:

@@ -2,8 +2,6 @@ from calculator import *
 import readline
 import sys
 
-calc = Calculator()
-
 def read_lines(prompt=''):
     try:
         while True:
@@ -17,7 +15,7 @@ def tokenize(line):
     for expr in line.partition('#')[0].split(';'):
         yield expr.split()
 
-def parse_print(line, simple=False):
+def parse_print(calc, line, simple=False):
     for tokens in tokenize(line):
         snap = calc.stack[:]
         for token in tokens:
@@ -34,10 +32,10 @@ def parse_print(line, simple=False):
             print(f'={stack}\t({calc.itoa(calc.base-1)}+1)')
 
 prefix='?'
-def parse(lines=read_lines(prefix), echo=False, simple=False):
+def parse(lines=read_lines(prefix), echo=False, simple=False, calc=Calculator()):
     for line in lines:
         if echo:
             print(prefix+line)
-        parse_print(line, simple)
+        parse_print(calc, line, simple)
         if not simple:
             print()
