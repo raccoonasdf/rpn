@@ -90,25 +90,30 @@ you can operate on data in the stack using operator functions, which will take s
 ```
 
 ## list of default operators
-| op          | args          | description                            |
-|-------------|---------------|----------------------------------------|
-| +           | num, num      | addition                               |
-| -           | num, num      | subtraction                            |
-| *           | num, num      | multiplication                         |
-| /           | num, num      | division                               |
-| %           | num, num      | modulo                                 |
-| ^ (**)      | num, num      | exponentation                          |
-| <           | num, num      | minimum                                |
-| >           | num, num      | maximum                                |
-| <-          | num, num      | first argument                         |
-| ->          | num, num      | second argument                        |
-| copy (cp)   | any           | duplicate                              |
-| swap (s)    | any, any      | swap order                             |
-| eval (e)    | sym           | evaluate symbol as operator            |
-| clear (c)   | stack         | clear stack                            |
-| base (b)    | any           | set base                               |
-| frac (f)    |               | toggle float/fraction representation   |
-| chr         | num           | convert number to symbol               |
-| ord         | sym           | convert symbol to number               |
-| range (r)   | num, num      | generate number range                  |
-| range' (r') | num, num, num | generate number range (with step size) |
+| name (alias) | arguments     | returns  | description                            |
+|--------------|---------------|----------|----------------------------------------|
+| +            | num, num      | num      | addition                               |
+| -            | num, num      | num      | subtraction                            |
+| *            | num, num      | num      | multiplication                         |
+| /            | num, num      | num      | division                               |
+| %            | num, num      | num      | modulo                                 |
+| ^ (**)       | num, num      | num      | exponentation                          |
+| <            | num, num      | num      | minimum                                |
+| >            | num, num      | num      | maximum                                |
+| abs          | num           | num      | absolute value                         |
+| ord          | sym           | num      | symbol to number                       |
+| range (r)    | num, num      | num\*    | generate number range                  |
+| range' (r')  | num, num, num | num\*    | generate number range (with step size) |
+| chr          | num           | sym      | number to symbol                       |
+| <-           | any, any      | any      | first argument                         |
+| ->           | any, any      | any      | second argument                        |
+| copy (cp)    | any           | any, any | duplicate                              |
+| swap (s)     | any, any      | any, any | swap order                             |
+| base (b)     | any           |          | set base                               |
+| clear (c)    | \*            |          | clear stack                            |
+| frac (f)     |               |          | toggle float/fraction representation   |
+| eval (e)     | sym           | varies   | evaluate symbol as operator            |
+| foldl (fold) | \*, sym       | varies   | fold (left to right)                   |
+| foldr        | \*, sym       | varies   | fold (right to left)                   |
+| map          | \*, sym       | varies   | map                                    |
+

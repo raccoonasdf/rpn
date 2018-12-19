@@ -13,6 +13,7 @@ class OperatorError(Exception):
 class Calculator:
     def __init__(self, base=10):
         self.operators = {
+            # returns num
             '+':       ((Fraction, Fraction), lambda x, y: x+y),
             '-':       ((Fraction, Fraction), lambda x, y: x-y),
             '*':       ((Fraction, Fraction), lambda x, y: x*y),
@@ -21,28 +22,43 @@ class Calculator:
             '^':       ((Fraction, Fraction), lambda x, y: x**y),
             '<':       ((Fraction, Fraction), lambda x, y: min(x, y)),
             '>':       ((Fraction, Fraction), lambda x, y: max(x, y)),
-            '<-':      ((object, object), lambda x, y: x),
-            '->':      ((object, object), lambda x, y: y),
-            '**':      '^',
-
-            'copy':    ((object,), lambda x: (x, x)),
-            'swap':    ((object, object), lambda x, y: (y, x)),
-            'eval':    ((str,), self.parse),
-            'clear':   ((list,), lambda *x: None),
-            'base':    ((object,), self._setbase),
-            'frac':    ((), self._togglefrac), #TODO: use := in 3.8+
-            'chr':     ((Fraction,), lambda x: chr(abs(round(x)))),
+            'abs':     ((Fraction,), abs),
             'ord':     ((str,), lambda x: (ord(char) for char in x)),
             'range':   ((Fraction, Fraction), lambda x, y: self._range(x, y)),
             'range\'': ((Fraction, Fraction, Fraction), lambda x, y, z: self._range(x, y, z)),
+
+            # returns sym
+            'chr':     ((Fraction,), lambda x: chr(abs(round(x)))),
+
+            # returns any
+            '<-':      ((object, object), lambda x, y: x),
+            '->':      ((object, object), lambda x, y: y),
+            'copy':    ((object,), lambda x: (x, x)),
+            'swap':    ((object, object), lambda x, y: (y, x)),
+
+            # returns nothing
+            'base':    ((object,), self._setbase),
+            'clear':   ((list,), lambda *x: None),
+            'frac':    ((), self._togglefrac), #TODO: use := in 3.8+
+
+            # contextual
+            'eval':    ((str,), self.parse),
+            'foldl':   ((list, str), self._fold),
+            'foldr':   ((list, str), lambda x, y: self._fold(x, y, right=True)),
+            'map':     ((list, str), self._map),
+            
+            # aliases
+            '**':      '^',
+            'r':       'range',
+            'r\'':     'range\'',
             'cp':      'copy',
             's':       'swap',
-            'e':       'eval',
-            'c':       'clear',
             'b':       'base',
+            'c':       'clear',
             'f':       'frac',
-            'r':       'range',
-            'r\'':     'range\''
+            'e':       'eval',
+            'fold':    'foldl'
+
         }
         self.stack = []
         self.base = base
@@ -77,6 +93,23 @@ class Calculator:
 
     def _togglefrac(self):
         self.frac = not self.frac
+
+    def _map(self, stack, op):
+        (types, f) = self.get_operator(op)
+        if len(stack) < len(types):
+            raise OperatorError(f'expected {len(types)} arguments')
+            
+        args = self._pop_args(types[:-1], stack=stack)
+        for value in stack:
+            yield f(*args, self._assert_type(value, types[-1]))
+
+    def _fold(self, stack, op, right=False):
+        if right:
+            stack = reversed(stack)
+        (types, f) = self.get_operator(op)
+        if len(types) != 2:
+            raise OperatorError(f'expected a 2-argument operator')
+        return functools.reduce(f, stack)
 
     def itoa(self, n, base=None):
         if base is None:
@@ -173,6 +206,8 @@ class Calculator:
 
         return round(self.atoF(s, base))
 
+
+
     def display_token(self, value):
         return self.Ftoa(value) if isinstance(value, Fraction) else ':'+value
 
@@ -180,77 +215,74 @@ class Calculator:
         type_strs = {object: 'any', Fraction: 'num', str: 'sym', list: 'stack'}
         if not isinstance(value, type):
             raise OperatorError(f'{self.display_token(value)} is not of type {type_strs[type]}')
+        return value
 
     @staticmethod
     def _cast(value):
-        if isinstance(value, int) or isinstance(value, float):
+        if isinstance(value, (int, float)):
             return Fraction(value)
         elif isinstance(value, complex):
             raise OperatorError('nonreal result')
         return value
 
+    def get_operator(self, name):
+        try:
+            op = self.operators[name]
+            if isinstance(op, str):
+                op = self.operators[op]
+        except KeyError:
+            raise OperatorError('operator not found')
+        return op
+
+    def _pop_args(self, types, stack=None):
+        if stack is None:
+            stack = self.stack
+        assert_types = lambda values, types: [self._assert_type(value, type) for value, type in zip(values, types)]
+        
+        if len(types) <= len(stack) or types == (list,):
+            result = []
+            try:
+                before = types.index(list)
+                after = -len(types[before+1:])
+                if after == 0:
+                    after = None
+                
+                result += assert_types(stack[:before], types[:before])
+                result.append(stack[before:after])
+                if after is not None:
+                    result += assert_types(stack[after:], types[after:])
+
+                stack.clear()
+            except ValueError:
+                result = assert_types(stack[-len(types):], types)
+
+                stack[:] = stack[:-len(types)]
+
+            return result
+        else:
+            raise OperatorError(f'expected {len(types)} arguments')
+
     def parse(self, token):
-        try: # is rational
+        value = None
+        
+        try: # rational
             value = self.atoF(token)
         except ValueError:
-            if token.startswith(':') and len(token) > 1: # is symbol
+            if token.startswith(':') and len(token) > 1: # symbol
                 value = str(token[1:])
-            else: # is operator
-                suffixes = ['$', '.']
-                suffix = None
-                for s in suffixes:
-                    if token.endswith(s):
-                        suffix = s
-                        token = token.rstrip(s)
-
+            elif token.endswith('$'): # foldl
+                self.parse(f':{token[:-1]}')
+                self.parse('foldl')
+            elif token.endswith('.'): # map
+                self.parse(f':{token[:-1]}')
+                self.parse('map')
+            else: # operator
+                (types, f) = self.get_operator(token)
                 try:
-                    operator = self.operators[token]
-                    if isinstance(operator, str): # check if operator is an alias
-                        operator = self.operators[operator]
-                except KeyError:
-                    raise OperatorError(f'operator not found')
-
-                (types, f) = operator
-                argc = len(types)
-                try:
-                    if argc == 0: # no args
-                        value = f()
-                    elif argc == 1 and types[0] is list: # entire stack
-                        value = f(*self.stack)
-                        self.stack = []
-                    elif argc > 0 and len(self.stack) >= argc:
-                        if suffix == '$': # reduce
-                            if argc != 2 or argc == 2 and types[0] != types[1]:
-                                raise OperatorError(f'need 2 args of same type for reduce')
-
-                            for value in self.stack:
-                                self._assert_type(value, types[0])
-                            value = functools.reduce(f, self.stack)
-                            self.stack = []
-                        elif suffix == '.': # map
-                            if argc == 1:
-                                for value in self.stack:
-                                    self._assert_type(value, types[0])
-                                value = map(f, self.stack)
-                            else:
-                                argc -= 1
-                                args, self.stack = self.stack[-argc:], self.stack[:-argc]
-                                for i, arg in enumerate(args):
-                                    self._assert_type(arg, types[i])
-                                for i, arg in enumerate(self.stack):
-                                    self._assert_type(arg, types[-1])
-                                repeated_args = (itertools.repeat(arg) for arg in args)
-                                value = map(f, *repeated_args, self.stack)
-                            self.stack = []
-                        else: # normal
-                            args, self.stack = self.stack[-argc:], self.stack[:-argc]
-                            for i, arg in enumerate(args):
-                                self._assert_type(arg, types[i])
-                            value = f(*args)
-                    else: # fail
-                        raise OperatorError(f'expected {argc} arguments')
+                    value = f(*self._pop_args(types))
                 except ZeroDivisionError:
                     raise OperatorError('division by zero')
+                    
         if value is not None:
             if not isinstance(value, str) and isinstance(value, collections.Iterable):
                 for item in value:
