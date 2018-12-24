@@ -4,8 +4,8 @@ import parser
 from calculator import Calculator
 import itertools
 
-# this only naively tests for uncaught exceptions due to basic type-related errors.
-# do not expect the tests to be very smart (yet).
+# this only naively tests for uncaught exceptions due to basic
+# type-related errors. do not expect the tests to be very smart (yet).
 
 calc = Calculator()
 

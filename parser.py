@@ -2,7 +2,11 @@ from calculator import *
 import readline
 import sys
 
-def read_lines(prompt=''):
+
+prefix = '?'
+
+
+def read_lines(prompt=prefix):
     try:
         while True:
             yield input(prompt)
@@ -11,9 +15,11 @@ def read_lines(prompt=''):
     except KeyboardInterrupt:
         return
 
+
 def tokenize(line):
     for expr in line.partition('#')[0].split(';'):
         yield expr.split()
+
 
 def parse_print(calc, line, simple=False):
     for tokens in tokenize(line):
@@ -31,8 +37,9 @@ def parse_print(calc, line, simple=False):
         else:
             print(f'={stack}\t({calc.itoa(calc.base-1)}+1)')
 
-prefix='?'
-def parse(lines=read_lines(prefix), echo=False, simple=False, calc=Calculator()):
+
+def parse(lines=read_lines(), echo=False, simple=False,
+          calc=Calculator()):
     for line in lines:
         if echo:
             print(prefix+line)

@@ -1,14 +1,17 @@
 from fractions import Fraction
 import collections
 import functools
-import itertools
 import re
 import string
 
-# these exceptions to be used for pretty messages on errors that have been
-# explicitly accounted for
+
 class OperatorError(Exception):
+    '''
+    to be used for pretty messages on errors that have been explicitly
+    accounted for
+    '''
     pass
+
 
 class Calculator:
     def __init__(self, base=10):
@@ -18,14 +21,15 @@ class Calculator:
             '-':       ((Fraction, Fraction), lambda x, y: x-y),
             '*':       ((Fraction, Fraction), lambda x, y: x*y),
             '/':       ((Fraction, Fraction), Fraction),
-            '%':       ((Fraction, Fraction), lambda x, y: x%y),
+            '%':       ((Fraction, Fraction), lambda x, y: x % y),
             '^':       ((Fraction, Fraction), lambda x, y: x**y),
             '<':       ((Fraction, Fraction), lambda x, y: min(x, y)),
             '>':       ((Fraction, Fraction), lambda x, y: max(x, y)),
             'abs':     ((Fraction,), abs),
             'ord':     ((str,), lambda x: (ord(char) for char in x)),
             'range':   ((Fraction, Fraction), lambda x, y: self._range(x, y)),
-            'range\'': ((Fraction, Fraction, Fraction), lambda x, y, z: self._range(x, y, z)),
+            'range\'': ((Fraction, Fraction, Fraction),
+                        lambda x, y, z: self._range(x, y, z)),
 
             # returns sym
             'chr':     ((Fraction,), lambda x: chr(abs(round(x)))),
@@ -39,14 +43,15 @@ class Calculator:
             # returns nothing
             'base':    ((object,), self._setbase),
             'clear':   ((list,), lambda *x: None),
-            'frac':    ((), self._togglefrac), #TODO: use := in 3.8+
+            'frac':    ((), self._togglefrac),  # TODO: use := in 3.8+
 
             # contextual
             'eval':    ((str,), self.parse),
             'foldl':   ((list, str), self._fold),
-            'foldr':   ((list, str), lambda x, y: self._fold(x, y, right=True)),
+            'foldr':   ((list, str),
+                        lambda x, y: self._fold(x, y, right=True)),
             'map':     ((list, str), self._map),
-            
+
             # aliases
             '**':      '^',
             'r':       'range',
@@ -74,11 +79,12 @@ class Calculator:
         while x <= end if start <= end else x >= end:
             yield x
             x += step
-        
+
     def _setbase(self, base):
         if isinstance(base, str):
             bases = {'bin': 2, 'b': 2, 'sex': 6, 's': 6, 'oct': 8, 'o': 8,
-                     'dec': 10, 'd': 10, 'doz': 12, 'hex': 16, 'h': 16, 'x': 16}
+                     'dec': 10, 'd': 10, 'doz': 12, 'hex': 16, 'h': 16,
+                     'x': 16}
             try:
                 self.base = bases[base]
             except KeyError:
@@ -98,7 +104,7 @@ class Calculator:
         (types, f) = self.get_operator(op)
         if len(stack) < len(types):
             raise OperatorError(f'expected {len(types)} arguments')
-            
+
         args = self._pop_args(types[:-1], stack=stack)
         for value in stack:
             yield f(*args, self._assert_type(value, types[-1]))
@@ -123,7 +129,7 @@ class Calculator:
 
         result = ''
         while n >= base:
-            result = lookup[n%base]+result
+            result = lookup[n % base]+result
             n //= base
 
         return sign+lookup[n]+result
@@ -133,7 +139,7 @@ class Calculator:
             base = self.base
         if frac is None:
             frac = self.frac
-        
+
         num, den = n.numerator, n.denominator
         if frac:
             num = self.itoa(num, base)
@@ -156,7 +162,7 @@ class Calculator:
     def atoF(self, s, base=None):
         if base is None:
             base = self.base
-            
+
         RATIONAL_FORMAT = re.compile(r"""
             \A\s*                               # optional whitespace at the start, then
             (?P<sign>[-+]?)                     # an optional sign, then
@@ -172,7 +178,7 @@ class Calculator:
         """, re.VERBOSE | re.IGNORECASE)
 
         m = RATIONAL_FORMAT.match(s)
-        if m is None: #TODO: use := in 3.8+
+        if m is None:  # TODO: use := in 3.8+
             raise ValueError(f'{s} is not a valid rational')
 
         num = int(m.group('num') or '0', base)
@@ -206,15 +212,14 @@ class Calculator:
 
         return round(self.atoF(s, base))
 
-
-
     def display_token(self, value):
         return self.Ftoa(value) if isinstance(value, Fraction) else ':'+value
 
     def _assert_type(self, value, type):
         type_strs = {object: 'any', Fraction: 'num', str: 'sym', list: 'stack'}
         if not isinstance(value, type):
-            raise OperatorError(f'{self.display_token(value)} is not of type {type_strs[type]}')
+            raise OperatorError(f'{self.display_token(value)} is not of type'
+                                f'{type_strs[type]}')
         return value
 
     @staticmethod
@@ -237,8 +242,11 @@ class Calculator:
     def _pop_args(self, types, stack=None):
         if stack is None:
             stack = self.stack
-        assert_types = lambda values, types: [self._assert_type(value, type) for value, type in zip(values, types)]
-        
+
+        def assert_types(values, types):
+            return [self._assert_type(value, type)
+                    for value, type in zip(values, types)]
+
         if len(types) <= len(stack) or types == (list,):
             result = []
             try:
@@ -246,7 +254,7 @@ class Calculator:
                 after = -len(types[before+1:])
                 if after == 0:
                     after = None
-                
+
                 result += assert_types(stack[:before], types[:before])
                 result.append(stack[before:after])
                 if after is not None:
@@ -264,27 +272,28 @@ class Calculator:
 
     def parse(self, token):
         value = None
-        
-        try: # rational
+
+        try:  # rational
             value = self.atoF(token)
         except ValueError:
-            if token.startswith(':') and len(token) > 1: # symbol
+            if token.startswith(':') and len(token) > 1:  # symbol
                 value = str(token[1:])
-            elif token.endswith('$'): # foldl
+            elif token.endswith('$'):  # foldl
                 self.parse(f':{token[:-1]}')
                 self.parse('foldl')
-            elif token.endswith('.'): # map
+            elif token.endswith('.'):  # map
                 self.parse(f':{token[:-1]}')
                 self.parse('map')
-            else: # operator
+            else:  # operator
                 (types, f) = self.get_operator(token)
                 try:
                     value = f(*self._pop_args(types))
                 except ZeroDivisionError:
                     raise OperatorError('division by zero')
-                    
+
         if value is not None:
-            if not isinstance(value, str) and isinstance(value, collections.Iterable):
+            if (isinstance(value, collections.Iterable)
+                    and not isinstance(value, str)):
                 for item in value:
                     self.stack.append(self._cast(item))
             else:
