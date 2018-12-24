@@ -44,6 +44,8 @@ class Calculator:
             'base':    ((object,), self._setbase),
             'clear':   ((list,), lambda *x: None),
             'frac':    ((), self._togglefrac),  # TODO: use := in 3.8+
+            '(':       ((), self._open_nest),
+            ')':       ((), self._close_nest),
 
             # contextual
             'eval':    ((str,), self.parse),
@@ -66,8 +68,18 @@ class Calculator:
 
         }
         self.stack = []
+        self.stack_stack = [self.stack]
         self.base = base
         self.frac = True
+
+    def _open_nest(self):
+        self.stack = []
+        self.stack_stack.append(self.stack)
+
+    def _close_nest(self):
+        result = self.stack_stack.pop()
+        self.stack = self.stack_stack[-1]
+        return result
 
     @staticmethod
     def _mul(x, y):
@@ -261,7 +273,9 @@ class Calculator:
             return [self._assert_type(value, type)
                     for value, type in zip(values, types)]
 
-        if len(types) <= len(stack) or types == (list,):
+        if len(types) == 0:
+            return []
+        elif len(types) <= len(stack) or types == (list,):
             result = []
             try:
                 before = types.index(list)
