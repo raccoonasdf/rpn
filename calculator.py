@@ -312,6 +312,12 @@ class Calculator:
             elif token.endswith('.'):  # map
                 self.parse(f':{token[:-1]}')
                 self.parse('map')
+            elif token.startswith('(') and token != '(':  # open expression
+                self.parse('(')
+                self.parse(token[1:])
+            elif token.endswith(')') and token != ')':  # close expression
+                self.parse(token[:-1])
+                self.parse(')')
             else:  # operator
                 (types, f) = self.get_operator(token)
                 try:
