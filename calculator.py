@@ -78,7 +78,10 @@ class Calculator:
 
     def _close_nest(self):
         result = self.stack_stack.pop()
-        self.stack = self.stack_stack[-1]
+        try:
+            self.stack = self.stack_stack[-1]
+        except IndexError:
+            raise OperatorError(f'already in outermost scope')
         return result
 
     @staticmethod
