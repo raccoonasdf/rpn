@@ -19,7 +19,7 @@ class Calculator:
             # returns num
             '+':       ((Fraction, Fraction), lambda x, y: x+y),
             '-':       ((Fraction, Fraction), lambda x, y: x-y),
-            '*':       ((Fraction, Fraction), lambda x, y: x*y),
+            '*':       ((object, Fraction), self._mul),
             '/':       ((Fraction, Fraction), Fraction),
             '%':       ((Fraction, Fraction), lambda x, y: x % y),
             '^':       ((Fraction, Fraction), lambda x, y: x**y),
@@ -70,6 +70,14 @@ class Calculator:
         self.frac = True
 
     @staticmethod
+    def _mul(x, y):
+        if isinstance(x, str):
+            return [x]*round(y)
+        else:
+            return x*y
+        pass
+
+    @staticmethod
     def _range(start, end, step=Fraction(1)):
         if step == 0:
             raise OperatorError('step cannot be 0')
@@ -105,9 +113,15 @@ class Calculator:
         if len(stack) < len(types):
             raise OperatorError(f'expected {len(types)} arguments')
 
-        args = self._pop_args(types[:-1], stack=stack)
-        for value in stack:
-            yield f(*args, self._assert_type(value, types[-1]))
+        if len(types) > 1:
+            args = self._pop_args(types[:-1], stack=stack)
+            for value in stack:
+                yield f(*args, self._assert_type(value, types[-1]))
+        else:
+            for value in stack:
+                result = f(self._assert_type(value, types[0]))
+                if result is not None:
+                    yield f(self._assert_type(value, types[0]))
 
     def _fold(self, stack, op, right=False):
         if right:
@@ -219,7 +233,7 @@ class Calculator:
         type_strs = {object: 'any', Fraction: 'num', str: 'sym', list: 'stack'}
         if not isinstance(value, type):
             raise OperatorError(f'{self.display_token(value)} is not of type'
-                                f'{type_strs[type]}')
+                                f' {type_strs[type]}')
         return value
 
     @staticmethod
