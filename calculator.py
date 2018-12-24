@@ -35,17 +35,19 @@ class Calculator:
             'chr':     ((Fraction,), lambda x: chr(abs(round(x)))),
 
             # returns any
-            '<-':      ((object, object), lambda x, y: x),
-            '->':      ((object, object), lambda x, y: y),
+            ')':       ((), self._close_nest),
             'copy':    ((object,), lambda x: (x, x)),
+            'first':   ((object, object), lambda x, y: x),
+            'second':  ((object, object), lambda x, y: y),
             'swap':    ((object, object), lambda x, y: (y, x)),
+            'get':     ((str,), self._envget),
 
             # returns nothing
+            '(':       ((), self._open_nest),
             'base':    ((object,), self._setbase),
             'clear':   ((list,), lambda *x: None),
             'frac':    ((), self._togglefrac),  # TODO: use := in 3.8+
-            '(':       ((), self._open_nest),
-            ')':       ((), self._close_nest),
+            'set':     ((object, str), self._envset),
 
             # contextual
             'eval':    ((str,), self.parse),
@@ -67,10 +69,32 @@ class Calculator:
             'fold':    'foldl'
 
         }
+        self.macros = {
+            'pre': {
+                '(': ('(', '{}')
+            },
+            'post': {
+                ')': ('{}', ')'),
+                '$': (':{}', 'foldl'),
+                '?': (':{}', 'get'),
+                '.': (':{}', 'map'),
+                '=': (':{}', 'set')
+            }
+        }
         self.stack = []
         self.stack_stack = [self.stack]
+        self.env = {}
         self.base = base
         self.frac = True
+
+    def _envget(self, key):
+        try:
+            return self.env[key]
+        except KeyError:
+            raise OperatorError(f'var :{key} not set')
+
+    def _envset(self, value, key):
+        self.env[key] = value
 
     def _open_nest(self):
         self.stack = []
@@ -301,33 +325,20 @@ class Calculator:
         else:
             raise OperatorError(f'expected {len(types)} arguments')
 
-    def parse(self, token):
-        value = None
+    def _run_macros(self, token):
+        for prefix, commands in self.macros['pre'].items():
+            if token.startswith(prefix):
+                for command in commands:
+                    self.parse(command.format(token[1:]))
+                return True
+        for suffix, commands in self.macros['post'].items():
+            if token.endswith(suffix):
+                for command in commands:
+                    self.parse(command.format(token[:-1]))
+                return True
+        return False
 
-        try:  # rational
-            value = self.atoF(token)
-        except ValueError:
-            if token.startswith(':') and len(token) > 1:  # symbol
-                value = str(token[1:])
-            elif token.endswith('$'):  # foldl
-                self.parse(f':{token[:-1]}')
-                self.parse('foldl')
-            elif token.endswith('.'):  # map
-                self.parse(f':{token[:-1]}')
-                self.parse('map')
-            elif token.startswith('(') and token != '(':  # open expression
-                self.parse('(')
-                self.parse(token[1:])
-            elif token.endswith(')') and token != ')':  # close expression
-                self.parse(token[:-1])
-                self.parse(')')
-            else:  # operator
-                (types, f) = self.get_operator(token)
-                try:
-                    value = f(*self._pop_args(types))
-                except ZeroDivisionError:
-                    raise OperatorError('division by zero')
-
+    def _append_stack(self, value):
         if value is not None:
             if (isinstance(value, collections.Iterable)
                     and not isinstance(value, str)):
@@ -335,3 +346,20 @@ class Calculator:
                     self.stack.append(self._cast(item))
             else:
                 self.stack.append(self._cast(value))
+
+    def parse(self, token):
+        try:
+            self._append_stack(self.atoF(token))
+        except ValueError:
+            if len(token) > 1:
+                if token.startswith(':'):
+                    self._append_stack(str(token[1:]))
+                    return
+                elif self._run_macros(token):
+                    return
+
+            (types, f) = self.get_operator(token)
+            try:
+                self._append_stack(f(*self._pop_args(types)))
+            except ZeroDivisionError:
+                raise OperatorError('division by zero')
